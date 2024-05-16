@@ -114,8 +114,7 @@ class LeafNode extends BPlusNode {
     LeafNode(BPlusTreeMetadata metadata, BufferManager bufferManager, List<DataBox> keys,
              List<RecordId> rids, Optional<Long> rightSibling, LockContext treeContext) {
         this(metadata, bufferManager, bufferManager.fetchNewPage(treeContext, metadata.getPartNum()),
-             keys, rids,
-             rightSibling, treeContext);
+             keys, rids, rightSibling, treeContext);
     }
 
     /**
@@ -372,12 +371,25 @@ class LeafNode extends BPlusNode {
      */
     public static LeafNode fromBytes(BPlusTreeMetadata metadata, BufferManager bufferManager,
                                      LockContext treeContext, long pageNum) {
-        // TODO(proj2): implement
         // Note: LeafNode has two constructors. To implement fromBytes be sure to
         // use the constructor that reuses an existing page instead of fetching a
         // brand new one.
+        Page page = bufferManager.fetchPage(treeContext,pageNum);
+        Buffer buffer = page.getBuffer();
 
-        return null;
+        byte nodeType = buffer.get();
+        assert (nodeType == (byte)1);
+        long other = buffer.getLong();
+        Optional<Long> rightSibling = other==-1L?Optional.empty():Optional.of(other);
+
+        List<DataBox> keys = new ArrayList<>();
+        List<RecordId> rids = new ArrayList<>();
+        int size = buffer.getInt();
+        for(int i=0;i<size;++i){
+            keys.add(DataBox.fromBytes(buffer,metadata.getKeySchema()));
+            rids.add(RecordId.fromBytes(buffer));
+        }
+        return new LeafNode(metadata,bufferManager, page, keys,rids,rightSibling,treeContext);
     }
 
     // Builtins ////////////////////////////////////////////////////////////////
